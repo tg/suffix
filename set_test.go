@@ -1,13 +1,18 @@
-package suffix
+package suffix_test
 
 import (
 	"bytes"
+	"fmt"
+	"log"
+	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/tg/suffix"
 )
 
 func TestSet_Find(t *testing.T) {
-	var set Set
+	var set suffix.Set
 
 	if set.Has("test.com") {
 		t.Error("test.com belongs to empty set")
@@ -54,7 +59,7 @@ func TestSet_Find(t *testing.T) {
 }
 
 func TestSet_ReadFrom(t *testing.T) {
-	var set Set
+	var set suffix.Set
 
 	data := `// This is a file full of suffixes
 two.girls
@@ -77,7 +82,7 @@ two.girls
 }
 
 func TestSet_WriteTo(t *testing.T) {
-	var set Set
+	var set suffix.Set
 	set.Add("google.com")
 	set.Add("youtube.com")
 	set.Add("blog.golang.org")
@@ -94,4 +99,23 @@ youtube.com
 	if s != expected {
 		t.Errorf("Expected %q, got %q", expected, s)
 	}
+}
+
+func ExamplePublicSuffixList() {
+	r, err := http.Get("https://publicsuffix.org/list/public_suffix_list.dat")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var pubsuf suffix.Set
+	_, err = pubsuf.ReadFrom(r.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	r.Body.Close()
+
+	fmt.Println(pubsuf.Match("big.bang.github.io"))
+
+	// Output:
+	// github.io
 }
