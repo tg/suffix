@@ -41,19 +41,32 @@ func (set *Set) Has(suffix string) bool {
 	return ok
 }
 
-// Match returns a matching suffix.
+// Match returns the longest matching suffix.
 // If nothing matches empty string is returned.
 func (set *Set) Match(name string) string {
-	if len(set.names) > 0 {
-		dot := len(name)
-		for n := 0; n < set.maxLabels && dot >= 0; n++ {
-			dot = strings.LastIndex(name[:dot], ".")
-			suffix := name[dot+1:]
-			if _, ok := set.names[suffix]; ok {
-				return suffix
-			}
-		}
+	if len(set.names) == 0 {
+		return ""
 	}
+
+	// Shrink to longest suffix
+	dot := len(name)
+	for n := set.maxLabels; n > 0 && dot > 0; n-- {
+		dot = strings.LastIndexByte(name[:dot], '.')
+	}
+	s := name[dot+1:]
+
+	// Find matching suffix
+	for len(s) > 0 {
+		if _, ok := set.names[s]; ok {
+			return s
+		}
+		dot := strings.IndexByte(s, '.')
+		if dot < 0 {
+			return ""
+		}
+		s = s[dot+1:]
+	}
+
 	return ""
 }
 
