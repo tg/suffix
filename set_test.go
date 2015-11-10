@@ -1,6 +1,7 @@
 package suffix
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 )
@@ -72,5 +73,25 @@ two.girls
 		if !set.Has(e) {
 			t.Errorf("Set doesn't have %q", e)
 		}
+	}
+}
+
+func TestSet_WriteTo(t *testing.T) {
+	var set Set
+	set.Add("google.com")
+	set.Add("youtube.com")
+	set.Add("blog.golang.org")
+
+	buf := &bytes.Buffer{}
+	set.WriteTo(buf)
+
+	s := buf.String()
+	expected := `blog.golang.org
+google.com
+youtube.com
+`
+
+	if s != expected {
+		t.Errorf("Expected %q, got %q", expected, s)
 	}
 }

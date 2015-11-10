@@ -2,7 +2,9 @@ package suffix
 
 import (
 	"bufio"
+	"fmt"
 	"io"
+	"sort"
 	"strings"
 )
 
@@ -78,11 +80,36 @@ func (set *Set) ReadFrom(r io.Reader) (n int64, err error) {
 	return cnt.N, scanner.Err()
 }
 
+// WriteTo serialises set into the writer.
+// Data is serialised in plain text, each suffix in a separate line.
+// Suffixes are written in lexicographical order.
+func (set *Set) WriteTo(w io.Writer) (n int64, err error) {
+	suffs := make([]string, 0, len(set.names))
+	for s := range set.names {
+		suffs = append(suffs, s)
+	}
+	sort.Strings(suffs)
+	c := &counter{W: w}
+	for n := range suffs {
+		_, err = fmt.Fprintln(c, suffs[n])
+		if err != nil {
+			break
+		}
+	}
+	return c.N, err
+}
+
 type counter struct {
+	W io.Writer
 	N int64
 }
 
 func (c *counter) Write(p []byte) (n int, err error) {
-	c.N += int64(len(p))
-	return len(p), nil
+	if c.W != nil {
+		n, err = c.W.Write(p)
+	} else {
+		n = len(p)
+	}
+	c.N += int64(n)
+	return
 }
