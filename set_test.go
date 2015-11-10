@@ -101,7 +101,7 @@ youtube.com
 	}
 }
 
-func ExamplePublicSuffixList() {
+func ExampleSet_ReadFrom_publicSuffixList() {
 	r, err := http.Get("https://publicsuffix.org/list/public_suffix_list.dat")
 	if err != nil {
 		log.Fatal(err)
