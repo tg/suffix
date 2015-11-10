@@ -1,0 +1,24 @@
+suffix -- domain name suffix search and print
+
+Suffix tool scans input lines and tries to locate a column containing name matching
+suffix pattern. Suffix matches the name if the latter ends with the same labels
+as specified by suffix. Labels are delimited by dots, as in DNS.
+
+For example suffix 'golang.org' would match 'blog.golang.org', but wouldn't
+match 'amigolang.org'.
+
+If no input files are provided, lines are read from stdin.
+Multiple name patterns can be provided by using -f flag, in which case
+no patterns are expected on command line.
+
+All matching is case sensitive.
+
+Usage:
+  suffix pattern [file...] [flags]
+
+Flags:
+  -c, --column=0: select only one column for matching
+  -d, --delimiter="\t": column delimiter
+  -f, --file="": read name patterns from file
+  -F, --fixed-names[=false]: treat suffixes as FQDNs, so they must match exactly
+  -v, --invert-match[=false]: invert match
