@@ -101,21 +101,21 @@ youtube.com
 	}
 }
 
-func ExampleSet_ReadFrom_publicSuffixList() {
-	r, err := http.Get("https://publicsuffix.org/list/public_suffix_list.dat")
+func ExampleSet_ReadFrom_iana() {
+	r, err := http.Get("http://data.iana.org/TLD/tlds-alpha-by-domain.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var pubsuf suffix.Set
-	_, err = pubsuf.ReadFrom(r.Body)
+	var tlds suffix.Set
+	_, err = tlds.ReadFrom(r.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
 	r.Body.Close()
 
-	fmt.Println(pubsuf.Match("big.bang.github.io"))
+	fmt.Println(tlds.Match("MERRY.CHRISTMAS"))
 
 	// Output:
-	// github.io
+	// CHRISTMAS
 }

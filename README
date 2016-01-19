@@ -2,7 +2,7 @@ suffix
 ======
 
 Suffix is a Go package and command line tool for matching suffixes in DNS names.
-For example by loading https://publicsuffix.org/list/public_suffix_list.dat
+For example by loading http://data.iana.org/TLD/tlds-alpha-by-domain.txt
 one could easily filter lines containing names matching listed suffixes.
 
 Install CLI:
