@@ -136,3 +136,15 @@ func (c *counter) Write(p []byte) (n int, err error) {
 	c.N += int64(n)
 	return
 }
+
+// PlusOne returns matching suffix plus one label from the name.
+// For example if set containt 'com' and name is 'www.blog.com',
+// this function would return 'blog.com'. Returned string is empty if there
+// is no matching suffix in the set or an additional label is missing.
+func PlusOne(set *Set, name string) string {
+	pre, suf := set.Split(name)
+	if suf == "" || pre == "" {
+		return ""
+	}
+	return pre[strings.LastIndexByte(pre, '.')+1:] + "." + suf
+}

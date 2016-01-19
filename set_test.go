@@ -132,3 +132,16 @@ func ExampleSet_Split() {
 	// bob blogspot.com
 	//  blogspot.com
 }
+
+func Example_PlusOne() {
+	var set suffix.Set
+	set.Add("com")
+	set.Add("blogspot.com")
+
+	fmt.Println(suffix.PlusOne(&set, "bob.dylan.blogspot.com"))
+	fmt.Println(suffix.PlusOne(&set, "blogspot.com"))
+
+	// Output:
+	// dylan.blogspot.com
+	//
+}
