@@ -119,3 +119,16 @@ func ExampleSet_ReadFrom_iana() {
 	// Output:
 	// CHRISTMAS
 }
+
+func ExampleSet_Split() {
+	var set suffix.Set
+	set.Add("com")
+	set.Add("blogspot.com")
+
+	fmt.Println(set.Split("bob.blogspot.com"))
+	fmt.Println(set.Split("blogspot.com"))
+
+	// Output:
+	// bob blogspot.com
+	//  blogspot.com
+}

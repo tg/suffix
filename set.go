@@ -76,6 +76,16 @@ func (set *Set) Matches(name string) bool {
 	return set.Match(name) != ""
 }
 
+// Split splits name into prefix and suffix where suffix is longest matching
+// suffix from the set. If no suffix matches empty strings are returned.
+func (set *Set) Split(name string) (pre string, suf string) {
+	suf = set.Match(name)
+	if suf != "" && len(name) > len(suf) {
+		pre = name[:len(name)-len(suf)-1]
+	}
+	return
+}
+
 // ReadFrom reads set from the stream. Each non-empty line of stream is
 // considered a suffix, except from lines beginning with '#' or '//', which
 // are treated as comments and skipped.
