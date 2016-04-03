@@ -44,7 +44,7 @@ func (set *Set) Has(suffix string) bool {
 // Match returns the longest matching suffix.
 // If nothing matches empty string is returned.
 func (set *Set) Match(name string) string {
-	if len(set.names) == 0 {
+	if len(set.names) == 0 || len(name) == 0 {
 		return ""
 	}
 
