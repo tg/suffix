@@ -1,0 +1,9 @@
+deployment:
+  release:
+    tag: /v[0-9.]+/
+    owner: tg
+    commands:
+      - go get github.com/mitchellh/gox
+      - go get github.com/tcnksm/ghr
+      - gox -osarch "darwin/amd64 linux/386 linux/amd64" -output "bin/{{.Dir}}_{{.OS}}_{{.Arch}}" ./cmd/...
+      - ghr -t $GITHUB_TOKEN -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --replace $CIRCLE_TAG bin/
