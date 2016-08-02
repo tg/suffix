@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -16,40 +17,32 @@ func TestSplitFilter(t *testing.T) {
 .
 `
 
-	expected := `3 . 3
-4 4 4 dot.dot
-.
-`
-	inverted := `1 1 1
-2 2
-
-5
-`
-
-	filter := Filter{
-		// Match any name containg dot
-		MatchField: func(n string) bool {
-			return strings.Contains(n, ".")
-		},
+	cases := []struct {
+		Filter   *Filter
+		Expected string
+	}{
+		{&Filter{}, "3 . 3\n4 4 4 dot.dot\n.\n"},
+		{&Filter{MatchNone: true}, "1 1 1\n2 2\n\n5\n"},
+		{&Filter{OnlyMatch: true}, ".\n.dot\n.\n"},
+		{&Filter{OnlyField: true}, ".\ndot.dot\n.\n"},
 	}
 
-	var buf bytes.Buffer
-	err := filter.Run(NewSplitScanner(strings.NewReader(input), " "), &buf)
-	if err != nil {
-		t.Error(err)
+	matchField := func(field string) string {
+		return regexp.MustCompile(`[.]\w*`).FindString(field)
 	}
 
-	if out := buf.String(); out != expected {
-		t.Errorf("\n-- Expected:\n%s-- Got:\n%s", expected, out)
-	}
+	for _, c := range cases {
+		filter := c.Filter
+		filter.MatchField = matchField
 
-	filter.MatchNone = true
-	buf.Reset()
-	err = filter.Run(NewSplitScanner(strings.NewReader(input), " "), &buf)
-	if err != nil {
-		t.Error(err)
-	}
-	if out := buf.String(); out != inverted {
-		t.Errorf("\n-- Expected:\n%s-- Got:\n%s", inverted, out)
+		var buf bytes.Buffer
+		err := filter.Run(NewSplitScanner(strings.NewReader(input), " "), &buf)
+		if err != nil {
+			t.Error(err)
+		}
+
+		if out := buf.String(); out != c.Expected {
+			t.Errorf("\n-- Expected:\n%s-- Got:\n%s", c.Expected, out)
+		}
 	}
 }

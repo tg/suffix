@@ -13,10 +13,11 @@ import (
 func main() {
 	var (
 		fromfile   string
-		invert     bool
 		fixedNames bool
 		fieldDelim string
 		fieldNum   int
+
+		filter Filter
 	)
 
 	// Main application
@@ -71,13 +72,17 @@ All matching is case sensitive.
 				inputs = append(inputs, ioutil.NopCloser(os.Stdin))
 			}
 
-			var filter Filter
 			if fixedNames {
-				filter.MatchField = sfx.Has
+				filter.MatchField = func(name string) string {
+					if sfx.Has(name) {
+						return name
+					}
+					return ""
+				}
 			} else {
-				filter.MatchField = sfx.Matches
+				filter.MatchField = sfx.Match
 			}
-			filter.MatchNone = invert
+
 			for _, in := range inputs {
 				var scan LineScanner
 				scan = NewSplitScanner(in, fieldDelim)
@@ -93,10 +98,12 @@ All matching is case sensitive.
 		},
 	}
 	app.Flags().StringVarP(&fromfile, "file", "f", "", "read name patterns from file")
-	app.Flags().BoolVarP(&invert, "invert-match", "v", false, "invert match")
+	app.Flags().BoolVarP(&filter.MatchNone, "invert-match", "v", false, "invert match")
 	app.Flags().BoolVarP(&fixedNames, "fixed-names", "F", false, "treat suffixes as FQDNs, so they must match exactly")
 	app.Flags().StringVarP(&fieldDelim, "delimiter", "d", "\t", "column delimiter")
 	app.Flags().IntVarP(&fieldNum, "column", "c", 0, "select only one column for matching")
+	app.Flags().BoolVar(&filter.OnlyMatch, "only-suffix", false, "print only matching suffix")
+	app.Flags().BoolVar(&filter.OnlyField, "only-name", false, "print only matching name")
 
 	app.Execute()
 }
