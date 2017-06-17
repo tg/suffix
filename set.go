@@ -8,72 +8,167 @@ import (
 	"strings"
 )
 
-// Set defines set of suffixes
-type Set struct {
-	names     map[string]struct{}
-	maxLabels int
+type matchType uint8
+
+const (
+	matchNone matchType = iota
+
+	// matchMore doesn't match anything directly,
+	// but indicates there are more matching suffixes.
+	matchMore = 1 << iota
+
+	matchExact = 1 << iota // match exact names
+	matchSub   = 1 << iota // match sub-names
+
+	matchAll = matchExact | matchSub
+)
+
+func (m matchType) has(f matchType) bool {
+	return m&f == f
 }
 
-// Len returns number of entries in Set
-func (set *Set) Len() int {
-	return len(set.names)
+// decodeSuffix return suffix and match type based on the pattern.
+// If trailing dot is present then matchExact is set,
+// leading dot yields matchSub, otherwise matchAll.
+func decodeSuffix(suffix string) (string, matchType) {
+	var match matchType
+
+	if suffix[len(suffix)-1] == '.' {
+		match |= matchExact
+	}
+	if suffix[0] == '.' {
+		match |= matchSub
+	}
+
+	if match == matchNone {
+		match = matchAll
+	}
+
+	return strings.Trim(suffix, "."), match
 }
 
-// Add suffix to the set
-func (set *Set) Add(suffix string) {
-	if set.names == nil {
-		set.names = make(map[string]struct{})
-	}
-
-	suffix = strings.Trim(suffix, ".")
-	set.names[suffix] = struct{}{}
-	// Find max number of lables
-	// TODO: handle double dot (*..*)
-	labels := strings.Count(suffix, ".") + 1
-	if labels > set.maxLabels {
-		set.maxLabels = labels
-	}
-}
-
-// Has returns true iff suffix was added to set.
-func (set *Set) Has(suffix string) bool {
-	_, ok := set.names[suffix]
-	return ok
-}
-
-// Match returns the longest matching suffix.
-// If nothing matches empty string is returned.
-func (set *Set) Match(name string) string {
-	if len(set.names) == 0 || len(name) == 0 {
-		return ""
-	}
-
-	// Shrink to longest suffix
-	dot := len(name)
-	for n := set.maxLabels; n > 0 && dot > 0; n-- {
-		dot = strings.LastIndexByte(name[:dot], '.')
-	}
-	s := name[dot+1:]
-
-	// Find matching suffix
-	for len(s) > 0 {
-		if _, ok := set.names[s]; ok {
-			return s
-		}
-		dot := strings.IndexByte(s, '.')
-		if dot < 0 {
-			return ""
-		}
-		s = s[dot+1:]
+// encodeSuffix is opposite to decodeSuffix, appending dot if necessary.
+func encodeSuffix(suffix string, match matchType) string {
+	switch true {
+	case match.has(matchAll):
+		return suffix
+	case match.has(matchExact):
+		return suffix + "."
+	case match.has(matchSub):
+		return "." + suffix
 	}
 
 	return ""
 }
 
+// Set defines set of suffixes
+type Set struct {
+	names map[string]matchType
+	size  int
+}
+
+// Len returns number of suffixes in Set
+func (set *Set) Len() int {
+	return set.size
+}
+
+// Add suffix to the set. If suffix starts with a prefix, only values ending,
+// but not equal will be matched; if suffix ends with a prefix, only exact
+// values will be matched. E.g.:
+//   "golang.org" will match golang.org and blog.golang.org
+//   ".golang.org" will match blog.golang.org, but not golang.org
+//   "golang.org." will match goland.org only
+//   ".golang.org." is equivalent to "golang.org"
+func (set *Set) Add(suffix string) {
+	if len(suffix) == 0 {
+		return
+	}
+
+	if set.names == nil {
+		set.names = make(map[string]matchType)
+	}
+
+	var match matchType
+	suffix, match = decodeSuffix(suffix)
+
+	// Increase size if suffix didn't match anything before
+	if set.names[suffix]&matchAll == 0 {
+		set.size++
+	}
+	set.names[suffix] |= match
+
+	// Add all parent names to build a tree.
+	// Don't need to do this for matchExact as we check them directly.
+	if match != matchExact {
+		for len(suffix) > 0 {
+			dot := strings.IndexByte(suffix, '.')
+			if dot < 0 {
+				return
+			}
+			suffix = suffix[dot+1:]
+			set.names[suffix] |= matchMore
+		}
+	}
+}
+
+// match returns matching suffix for the name.
+// If longest is true then match returns the longest matching suffix (slower).
+func (set *Set) match(name string, longest bool) string {
+	if len(set.names) == 0 {
+		return ""
+	}
+
+	// Check exact match first, so we only care about parent suffixes later.
+	// Also means we don't always need to track all parent suffixes in Add().
+	if set.MatchesExact(name) {
+		return name
+	}
+
+	// Matching suffix
+	suffix := ""
+
+	// Check sub-matches by starting with the last label
+	dot := len(name)
+	for {
+		dot = strings.LastIndexByte(name[:dot], '.')
+		if dot < 0 {
+			break
+		}
+
+		s := name[dot+1:] // extract current suffix
+		m := set.names[s] // check match
+
+		if m.has(matchSub) {
+			suffix = s
+			if !longest {
+				break
+			}
+		}
+		if !m.has(matchMore) {
+			break
+		}
+	}
+
+	return suffix
+}
+
+// Match returns the longest matching suffix.
+// If nothing matches empty string is returned.
+func (set *Set) Match(name string) string {
+	return set.match(name, true)
+}
+
 // Matches checks if passed name matches any suffix.
-// Equivalent to Match(name) != ""
+// This is potentially quicker than using Match(name) != "" as we stop
+// searching after the first match.
 func (set *Set) Matches(name string) bool {
-	return set.Match(name) != ""
+	return set.match(name, false) != ""
+}
+
+// MatchesExact returns true if name matches exactly.
+// Similar to Match(name) == name, but requires only a single lookup.
+func (set *Set) MatchesExact(name string) bool {
+	return len(set.names) > 0 && set.names[name]&matchExact != 0
 }
 
 // Split splits name into prefix and suffix where suffix is longest matching
@@ -107,9 +202,12 @@ func (set *Set) ReadFrom(r io.Reader) (n int64, err error) {
 // Data is serialised in plain text, each suffix in a separate line.
 // Suffixes are written in lexicographical order.
 func (set *Set) WriteTo(w io.Writer) (n int64, err error) {
-	suffs := make([]string, 0, len(set.names))
-	for s := range set.names {
-		suffs = append(suffs, s)
+	suffs := make([]string, 0, set.Len())
+	for s, m := range set.names {
+		s = encodeSuffix(s, m)
+		if s != "" {
+			suffs = append(suffs, s)
+		}
 	}
 	sort.Strings(suffs)
 	c := &counter{W: w}

@@ -74,7 +74,7 @@ All matching is case sensitive.
 
 			if fixedNames {
 				filter.MatchField = func(name string) string {
-					if sfx.Has(name) {
+					if sfx.MatchesExact(name) {
 						return name
 					}
 					return ""

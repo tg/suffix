@@ -11,17 +11,32 @@ import (
 	"github.com/tg/suffix"
 )
 
-func TestSet_Find(t *testing.T) {
+func TestSet_Match(t *testing.T) {
 	var set suffix.Set
 
-	if set.Has("test.com") {
-		t.Error("test.com belongs to empty set")
+	// add suffixes; multiple times to make sure this is safe
+	for n := 0; n < 3; n++ {
+		set.Add("redtube.com")
+		set.Add("bbc.co.uk")
+
+		set.Add("d.")
+		set.Add("a.b.c.d")
+		set.Add(".c.d")
+		set.Add("c.d.")
+		set.Add(".b.c.d")
+
+		set.Add(".subs")
+		set.Add(".subs.com")
+
+		set.Add("fixed.")
+		set.Add("fixed.com.")
+
+		set.Add(".both.com.") // equivalent to no edge dots
 	}
 
-	set.Add("redtube.com")
-	set.Add("bbc.co.uk")
-	set.Add("a.b.c.d")
-	set.Add(".arpa..")
+	if size := set.Len(); size != 11 {
+		t.Error("invalid set size: ", size)
+	}
 
 	cases := []struct {
 		name   string
@@ -31,19 +46,37 @@ func TestSet_Find(t *testing.T) {
 		{"gang.redtube.com", "redtube.com"},
 		{"bang.gang.redtube.com", "redtube.com"},
 
+		{"d", "d"},
+		{"c.d", "c.d"},
+		{"x.d", ""},
+		{"c.d", "c.d"},
+		{"b.c.d", "c.d"},
 		{"a.b.c.d", "a.b.c.d"},
-		{".a.b.c.d", "a.b.c.d"},
+		{"x.b.c.d", "b.c.d"},
+		{"x.x.c.d", "c.d"},
+		{"x.x.x.d", ""},
 
-		{"arpa", "arpa"},
-		{"in.arpa", "arpa"},
+		{"yellow.subs", "subs"},
+		{"yellow.subs.com", "subs.com"},
+		{"green.and.yellow.subs.com", "subs.com"},
 
-		{"a.a.c.d", ""},
+		{"fixed", "fixed"},
+		{"fixed.com", "fixed.com"},
+
+		{"both.com", "both.com"},
+		{"yes.both.com", "both.com"},
+
+		// Don't match these...
 		{"pinktube.com", ""},
 		{"edtube.com", ""},
 		{"com", ""},
 		{"bbc", ""},
 		{"co.uk", ""},
 		{"bbc.co", ""},
+		{"subs", ""},
+		{"subs.com", ""},
+		{"some.fixed", ""},
+		{"some.fixed.com", ""},
 	}
 
 	for _, c := range cases {
@@ -73,27 +106,23 @@ two.girls
 	if set.Len() != len(expected) {
 		t.Fatalf("Expected %d suffixes, got %d", len(expected), set.Len())
 	}
-
-	for _, e := range expected {
-		if !set.Has(e) {
-			t.Errorf("Set doesn't have %q", e)
-		}
-	}
 }
 
 func TestSet_WriteTo(t *testing.T) {
 	var set suffix.Set
+	set.Add("com")
 	set.Add("google.com")
-	set.Add("youtube.com")
-	set.Add("blog.golang.org")
+	set.Add(".youtube.com")
+	set.Add("blog.golang.org.")
 
 	buf := &bytes.Buffer{}
 	set.WriteTo(buf)
 
 	s := buf.String()
-	expected := `blog.golang.org
+	expected := `.youtube.com
+blog.golang.org.
+com
 google.com
-youtube.com
 `
 
 	if s != expected {
