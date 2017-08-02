@@ -72,12 +72,12 @@ func (set *Set) Len() int {
 	return set.size
 }
 
-// Add suffix to the set. If suffix starts with a prefix, only values ending,
-// but not equal will be matched; if suffix ends with a prefix, only exact
+// Add suffix to the set. If suffix starts with a dot, only values ending,
+// but not equal will be matched; if suffix ends with a dot, only exact
 // values will be matched. E.g.:
 //   "golang.org" will match golang.org and blog.golang.org
 //   ".golang.org" will match blog.golang.org, but not golang.org
-//   "golang.org." will match goland.org only
+//   "golang.org." will match golang.org only
 //   ".golang.org." is equivalent to "golang.org"
 func (set *Set) Add(suffix string) {
 	if len(suffix) == 0 {
