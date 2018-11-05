@@ -174,3 +174,33 @@ func Example_PlusOne() {
 	// dylan.blogspot.com
 	//
 }
+
+// Example_Map shows how to create a mapping for suffixes added to Set.
+func Example_Map() {
+	var set suffix.Set
+	ruleID := make(map[suffix.Match]int)
+
+	rules := []string{
+		".google.com",
+		".com",
+		"google.com.",
+		"blog.com",
+		"blog.google.com",
+	}
+
+	for id, rule := range rules {
+		for _, match := range set.Add(rule) {
+			ruleID[match] = id
+		}
+	}
+
+	set.MatchAll("blog.google.com", func(m suffix.Match) bool {
+		fmt.Printf("Matched rule %d (%s)\n", ruleID[m], m.Suffix)
+		return true
+	})
+
+	// Output:
+	// Matched rule 4 (blog.google.com)
+	// Matched rule 1 (com)
+	// Matched rule 0 (google.com)
+}
