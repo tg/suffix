@@ -72,6 +72,12 @@ func (set *Set) Len() int {
 	return set.size
 }
 
+// Match contains matching suffix and way it matches
+type Match struct {
+	Suffix string // raw suffix (domain)
+	Exact  bool   // if true exact (full) match, otherwise subdomain match
+}
+
 // Add suffix to the set. If suffix starts with a dot, only values ending,
 // but not equal will be matched; if suffix ends with a dot, only exact
 // values will be matched. E.g.:
@@ -79,9 +85,9 @@ func (set *Set) Len() int {
 //   ".golang.org" will match blog.golang.org, but not golang.org
 //   "golang.org." will match golang.org only
 //   ".golang.org." is equivalent to "golang.org"
-func (set *Set) Add(suffix string) {
+func (set *Set) Add(suffix string) []Match {
 	if len(suffix) == 0 {
-		return
+		return nil
 	}
 
 	if set.names == nil {
@@ -90,6 +96,15 @@ func (set *Set) Add(suffix string) {
 
 	var match matchType
 	suffix, match = decodeSuffix(suffix)
+
+	// Prepare resulting matches
+	res := make([]Match, 0, 2)
+	if match&matchExact != 0 {
+		res = append(res, Match{suffix, true})
+	}
+	if match&matchSub != 0 {
+		res = append(res, Match{suffix, false})
+	}
 
 	// Increase size if suffix didn't match anything before
 	if set.names[suffix]&matchAll == 0 {
@@ -103,16 +118,18 @@ func (set *Set) Add(suffix string) {
 		for len(suffix) > 0 {
 			dot := strings.IndexByte(suffix, '.')
 			if dot < 0 {
-				return
+				break
 			}
 			suffix = suffix[dot+1:]
 			set.names[suffix] |= matchMore
 		}
 	}
+
+	return res
 }
 
 // MatchAll calls callback for each matching suffix.
-func (set *Set) MatchAll(name string, callback func(sfx string, exact bool) bool) {
+func (set *Set) MatchAll(name string, callback func(m Match) bool) {
 	if len(set.names) == 0 {
 		return
 	}
@@ -120,7 +137,7 @@ func (set *Set) MatchAll(name string, callback func(sfx string, exact bool) bool
 	// Check exact match first, so we only care about parent suffixes later.
 	// Also means we don't always need to track all parent suffixes in Add().
 	if set.MatchesExact(name) {
-		if !callback(name, true) {
+		if !callback(Match{name, true}) {
 			return
 		}
 	}
@@ -137,7 +154,7 @@ func (set *Set) MatchAll(name string, callback func(sfx string, exact bool) bool
 		m := set.names[s] // check match
 
 		if m.has(matchSub) {
-			if !callback(s, false) {
+			if !callback(Match{s, false}) {
 				break
 			}
 		}
@@ -151,9 +168,9 @@ func (set *Set) MatchAll(name string, callback func(sfx string, exact bool) bool
 // If nothing matches empty string is returned.
 func (set *Set) Match(name string) string {
 	var res string
-	set.MatchAll(name, func(sfx string, exact bool) bool {
-		res = sfx
-		return !exact // stop on exact match, otherwise keep matching
+	set.MatchAll(name, func(m Match) bool {
+		res = m.Suffix
+		return !m.Exact // stop on exact match, otherwise keep matching
 	})
 	return res
 }
@@ -163,7 +180,7 @@ func (set *Set) Match(name string) string {
 // searching after the first match.
 func (set *Set) Matches(name string) bool {
 	var res bool
-	set.MatchAll(name, func(sfx string, exact bool) bool {
+	set.MatchAll(name, func(Match) bool {
 		res = true
 		return false // stop on first match
 	})
