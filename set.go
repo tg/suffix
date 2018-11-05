@@ -111,21 +111,19 @@ func (set *Set) Add(suffix string) {
 	}
 }
 
-// match returns matching suffix for the name.
-// If longest is true then match returns the longest matching suffix (slower).
-func (set *Set) match(name string, longest bool) string {
+// MatchAll calls callback for each matching suffix.
+func (set *Set) MatchAll(name string, callback func(sfx string, exact bool) bool) {
 	if len(set.names) == 0 {
-		return ""
+		return
 	}
 
 	// Check exact match first, so we only care about parent suffixes later.
 	// Also means we don't always need to track all parent suffixes in Add().
 	if set.MatchesExact(name) {
-		return name
+		if !callback(name, true) {
+			return
+		}
 	}
-
-	// Matching suffix
-	suffix := ""
 
 	// Check sub-matches by starting with the last label
 	dot := len(name)
@@ -139,8 +137,7 @@ func (set *Set) match(name string, longest bool) string {
 		m := set.names[s] // check match
 
 		if m.has(matchSub) {
-			suffix = s
-			if !longest {
+			if !callback(s, false) {
 				break
 			}
 		}
@@ -148,21 +145,29 @@ func (set *Set) match(name string, longest bool) string {
 			break
 		}
 	}
-
-	return suffix
 }
 
 // Match returns the longest matching suffix.
 // If nothing matches empty string is returned.
 func (set *Set) Match(name string) string {
-	return set.match(name, true)
+	var res string
+	set.MatchAll(name, func(sfx string, exact bool) bool {
+		res = sfx
+		return !exact // stop on exact match, otherwise keep matching
+	})
+	return res
 }
 
 // Matches checks if passed name matches any suffix.
 // This is potentially quicker than using Match(name) != "" as we stop
 // searching after the first match.
 func (set *Set) Matches(name string) bool {
-	return set.match(name, false) != ""
+	var res bool
+	set.MatchAll(name, func(sfx string, exact bool) bool {
+		res = true
+		return false // stop on first match
+	})
+	return res
 }
 
 // MatchesExact returns true if name matches exactly.
