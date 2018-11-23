@@ -162,7 +162,7 @@ func ExampleSet_Split() {
 	//  blogspot.com
 }
 
-func Example_PlusOne() {
+func Example_plusOne() {
 	var set suffix.Set
 	set.Add("com")
 	set.Add("blogspot.com")
@@ -175,8 +175,8 @@ func Example_PlusOne() {
 	//
 }
 
-// Example_Map shows how to create a mapping for suffixes added to Set.
-func Example_Map() {
+// Example_map shows how to create a mapping for suffixes added to Set.
+func Example_map() {
 	var set suffix.Set
 	ruleID := make(map[suffix.Match]int)
 
