@@ -178,29 +178,42 @@ func Example_plusOne() {
 // Example_map shows how to create a mapping for suffixes added to Set.
 func Example_map() {
 	var set suffix.Set
-	ruleID := make(map[suffix.Match]int)
 
-	rules := []string{
-		".google.com",
-		".com",
-		"google.com.",
-		"blog.com",
-		"blog.google.com",
+	// tags will keep a list of tags for each possible match
+	tags := make(map[suffix.Match][]string)
+
+	// set up rules and add to set
+	rules := []struct {
+		Name string
+		Tag  string
+	}{
+		// will match google.com and all subdomains
+		{"google.com", "google"},
+		// will match google.com exactly
+		{"google.com.", "toplevel"},
+		// will match only subdomains *.google.com
+		{".google.com", "subdomain"},
+		// will match api.google.com exactly
+		{"www.google.com.", "websearch"},
 	}
-
-	for id, rule := range rules {
-		for _, match := range set.Add(rule) {
-			ruleID[match] = id
+	for _, rule := range rules {
+		for _, match := range set.Add(rule.Name) {
+			// create mapping between each match;
+			// matches are not unique between names, so we need to append.
+			tags[match] = append(tags[match], rule.Tag)
 		}
 	}
 
-	set.MatchAll("blog.google.com", func(m suffix.Match) bool {
-		fmt.Printf("Matched rule %d (%s)\n", ruleID[m], m.Suffix)
+	// get all tags for www.google.com
+	set.MatchAll("www.google.com", func(m suffix.Match) bool {
+		for _, tag := range tags[m] {
+			fmt.Println(tag)
+		}
 		return true
 	})
 
 	// Output:
-	// Matched rule 4 (blog.google.com)
-	// Matched rule 1 (com)
-	// Matched rule 0 (google.com)
+	// websearch
+	// google
+	// subdomain
 }
